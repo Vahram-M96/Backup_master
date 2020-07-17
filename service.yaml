@@ -1,0 +1,15 @@
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    name: testpod       
+  name: testpod
+spec:
+  selector:
+    name: testpod         
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30090
+  type: NodePort

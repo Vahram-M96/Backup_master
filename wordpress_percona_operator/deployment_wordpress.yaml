@@ -1,0 +1,98 @@
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: wordpress
+#  labels:
+#    app: wordpress
+#spec:
+#  ports:
+#    - port: 80
+#  selector:
+#    app: wordpress
+#    tier: frontend
+#  type: LoadBalancer
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: test
+spec:
+  selector:
+    app: testwp
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30170
+  type: NodePort
+---
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: wp-pxc-claim
+#  labels:
+#    app: testwp
+#spec:
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 5Gi
+---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: testwordpress
+  labels:
+    app: testwp
+spec:
+  replicas: 1      
+  selector:
+    matchLabels:
+      app: testwp
+      tier: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: testwp
+        tier: frontend
+    spec:
+      tolerations:
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 20
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 20      
+      volumes:
+      - name: wp1-volume
+        emptyDir: {}        
+      - name: config-volume
+        configMap:
+          name: nginx
+        
+ #      - name: wp-volume
+ #        persistentVolumeClaim:
+ #         claimName: wp-pxc-claim
+   
+      containers:
+      - image: vahram96/php_test_new
+        name: php
+        volumeMounts:
+        - name: wp1-volume
+          mountPath: /var/www/html/
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "cp -r /app/. /var/www/html"]
+      - image: nginx
+        name: nginx
+        volumeMounts:
+        - name: wp1-volume
+          mountPath: /var/www/html/
+        - name: config-volume
+          mountPath: /etc/nginx/conf.d/
